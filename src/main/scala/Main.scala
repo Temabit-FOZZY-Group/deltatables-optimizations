@@ -2,14 +2,12 @@ import org.apache.spark.sql.SparkSession
 import scopt.OParser
 import wvlet.log.LogSupport
 
-import java.util.concurrent.Executors
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, ExecutionContext, Future}
 
 object Main extends LogSupport {
   case class Config(
       databases: Seq[String] = Seq(),
-      threads: Int = 10
+      excludeDb: Seq[String] = Seq()
   )
 
   def main(args: Array[String]): Unit = {
@@ -23,9 +21,10 @@ object Main extends LogSupport {
           .valueName("<db1>,<db2>...")
           .action((x, c) => c.copy(databases = x))
           .text("A list of databases to run VACUUM on"),
-        opt[Int]('t', "threads")
-          .action((x, c) => c.copy(threads = x))
-          .text("Specify the parallelism"),
+        opt[Seq[String]]('e', "excludeDb")
+          .valueName("<db1>,<db2>...")
+          .action((x, c) => c.copy(excludeDb = x))
+          .text("A list of databases to exclude from VACUUM"),
         help("help").text("use this jar with spark")
       )
     }
@@ -51,57 +50,66 @@ object Main extends LogSupport {
           .enableHiveSupport()
           .getOrCreate()
 
+        spark.sparkContext.setLogLevel("WARN")
+
         import spark.implicits._
         val objects = ListBuffer[String]()
+        val databases = ListBuffer[String]()
+        val databasesToExclude = ListBuffer[String]()
 
-        spark
-          .sql("show databases")
-          .as[String]
-          .filter(row =>
-            config.databases.head.equalsIgnoreCase("all") || config.databases
-              .contains(row)
+        if (!config.databases.head.equals("all")) {
+          config.databases.foreach(db => {
+            databases.appendAll(
+              spark.sql(s"show databases like '$db'").as[String].collect()
+            )
+          })
+        } else {
+          databases.appendAll(
+            spark.sql(s"show databases like '*'").as[String].collect()
           )
-          .collect()
-          .par
+        }
+        config.excludeDb.foreach(db => {
+          databasesToExclude.appendAll(
+            spark.sql(s"show databases like '$db'").as[String].collect()
+          )
+        })
+
+        val dbs = databases.diff(databasesToExclude)
+
+        dbs.par
           .foreach(db => {
-            val tables = spark.sql(s"""show tables in $db""")
+            val tables = spark
+              .sql(s"""show tables in $db""")
+
             objects.appendAll(
               tables
                 .map(row => s"${row.getString(0)}.${row.getString(1)}")
                 .as[String]
                 .collect()
             )
+
           })
 
-        val parallelism = config.threads
-        val executor = Executors.newFixedThreadPool(parallelism)
-        implicit val ec: ExecutionContext =
-          ExecutionContext.fromExecutor(executor)
-        val results: Seq[Future[Any]] = objects.map(table => {
-          Future {
-            try {
-              val format = spark
-                .sql(s"""DESCRIBE DETAIL $table""")
-                .select("format")
-                .head()
-                .getString(0)
-              if (format == "delta") {
-                logger.info(s"running vacuum on '$table''")
-                spark.sql(s"""VACUUM $table""");
-                logger.info(s"finished vacuum on '$table''")
-              }
-            } catch {
-              case e: Exception =>
-                logger.warn(
-                  s"Error occurred while processing '$table'\n ${e.getMessage}"
-                )
+        objects.foreach(table => {
+          try {
+            val format = spark
+              .sql(s"""DESCRIBE DETAIL $table""")
+              .select("format")
+              .head()
+              .getString(0)
+            if (format == "delta") {
+              logger.info(s"running vacuum on '$table''")
+              spark.sql(s"""VACUUM $table""");
+              logger.info(s"finished vacuum on '$table''")
             }
-          }(ec)
+          } catch {
+            case e: Exception =>
+              logger.warn(
+                s"Error occurred while processing '$table', ${e.getLocalizedMessage}"
+              )
+          }
         })
 
-        val allDone: Future[Seq[Any]] = Future.sequence(results)
-        Await.result(allDone, scala.concurrent.duration.Duration.Inf)
-        executor.shutdown
       case _ =>
         logger.error("Provided arguments are not correct")
 
