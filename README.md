@@ -6,6 +6,6 @@ Build a jar and pass it to Spark.
 Accepted arguments:
 
 ```
--d, --databases <db1>,<db2>...        database name or list of databases to run vacuum on (accepts regexp)
+-d, --databases <db1>,<db2>..., default "all"        database name or list of databases to run vacuum on (accepts regexp)
 -e, --excludeDb <db1>,<db2>...        database name or list of databases to exclude from vacuum (accepts regexp)
 ```
