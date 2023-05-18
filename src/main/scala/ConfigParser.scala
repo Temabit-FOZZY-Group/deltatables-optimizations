@@ -12,10 +12,11 @@ object ConfigParser {
         "use this jar via spark to perform vacuum on a desired table or database"
       ),
       opt[Seq[String]]('i', "include")
-        .valueName("<db1>,<db2>,<db3>.<table1>...")
+        .valueName("[optional] <db1>,<db2>,<db3>.<table1>...")
         .action((x, c) => c.copy(include = x))
         .text(
           s"""A list of objects to run VACUUM on.
+             |By default, will run on all databases and tables in metastore
              |An example of accepted values:
              |user.* - all objects in databases that starts with "user"
              |user - all objects in user database
@@ -23,7 +24,7 @@ object ConfigParser {
              |""".stripMargin
         ),
       opt[Seq[String]]('e', "exclude")
-        .valueName("<db1>,<db2>,<db3>.<table1>...")
+        .valueName("[optional] <db1>,<db2>,<db3>.<table1>...")
         .action((x, c) => c.copy(exclude = x))
         .text(s"""A list of databases to exclude from VACUUM.
              |An example of accepted values:
@@ -32,8 +33,19 @@ object ConfigParser {
              |user_x.table - specific table
              |""".stripMargin),
       cmd("vacuum")
-        .action((_, c) => c.copy(runVacuum = true))
-        .text("run vacuum on specific databases or tables")
+        .action((_, c) => c.copy(mode = "vacuum"))
+        .text("run vacuum on specific databases or tables"),
+      cmd("optimize")
+        .action((_, c) => c.copy(mode = "optimize"))
+        .text("run optimize on specific databases or tables")
+        .children(
+          opt[String]('c', "condition")
+            .valueName("[optional] (e.g. date >= '2017-01-01')")
+            .action((x, c) => c.copy(optimizeCondition = Some(x)))
+            .text(s"""A condition to run optimize with.
+               |E.g. OPTIMIZE delta_table_name WHERE date >= '2017-01-01'
+               |""".stripMargin)
+        )
     )
   }
 }

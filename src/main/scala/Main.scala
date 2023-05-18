@@ -3,9 +3,10 @@ import wvlet.log.LogSupport
 
 object Main extends LogSupport {
   case class Config(
-      runVacuum: Boolean = false,
+      mode: String = "",
       exclude: Seq[String] = Seq(),
-      include: Seq[String] = Seq("all")
+      include: Seq[String] = Seq("all"),
+      optimizeCondition: Option[String] = None
   )
 
   def main(args: Array[String]): Unit = {
@@ -15,8 +16,9 @@ object Main extends LogSupport {
     OParser.parse(parser, args, Config()) match {
       case Some(config) =>
         val objects = DatabaseService.collectObjects(config)
-        if (config.runVacuum) {
-          Vacuum.run(objects)
+        config.mode match {
+          case "vacuum"   => Vacuum.run(objects)
+          case "optimize" => Optimize.run(objects, config.optimizeCondition)
         }
 
       case _ =>
