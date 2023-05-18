@@ -1,10 +1,10 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "1.0.1"
 
 ThisBuild / scalaVersion := "2.12.10"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "vacuum"
+    name := "deltatables-optimizations"
   )
 
 val sparkVersion = "3.3.2"
