@@ -45,13 +45,23 @@ object DatabaseService extends LogSupport {
     }
     objects
       .filter(table => {
-        val format = spark
-          .sql(s"""DESCRIBE DETAIL $table""")
-          .select("format")
-          .head()
-          .getString(0)
-        format == "delta"
+        var isDelta = false
+        try {
+          val format = spark
+            .sql(s"""DESCRIBE DETAIL $table""")
+            .select("format")
+            .head()
+            .getString(0)
+          isDelta = format == "delta"
+        } catch {
+          case e: org.apache.spark.sql.delta.DeltaAnalysisException =>
+            logger.info(s"$table is not a Delta table")
+          case other: Throwable =>
+            throw other
+        }
+        isDelta
       })
       .toList
+
   }
 }
