@@ -1,10 +1,11 @@
 import Main.Config
 import SparkSession.spark
+import wvlet.log.LogSupport
 
 import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
-object DatabaseService {
+object DatabaseService extends LogSupport {
   def collectObjects(config: Config): List[String] = {
     import spark.implicits._
     var objects = ListBuffer[String]()
@@ -42,6 +43,15 @@ object DatabaseService {
       )
       objects = objects.filter(obj => !regexp.pattern.matcher(obj).matches())
     }
-    objects.toList
+    objects
+      .filter(table => {
+        val format = spark
+          .sql(s"""DESCRIBE DETAIL $table""")
+          .select("format")
+          .head()
+          .getString(0)
+        format == "delta"
+      })
+      .toList
   }
 }
