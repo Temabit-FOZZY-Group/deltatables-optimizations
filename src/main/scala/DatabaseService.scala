@@ -56,6 +56,10 @@ object DatabaseService extends LogSupport {
         } catch {
           case e: org.apache.spark.sql.delta.DeltaAnalysisException =>
             logger.info(s"$table is not a Delta table")
+          case e: org.apache.spark.sql.catalyst.analysis.NoSuchTableException =>
+            logger.info(
+              s"Table or view $table not found, while trying to get meta information about it"
+            )
           case other: Throwable =>
             throw other
         }
