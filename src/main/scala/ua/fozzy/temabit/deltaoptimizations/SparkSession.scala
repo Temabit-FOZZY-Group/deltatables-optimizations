@@ -18,6 +18,7 @@ object SparkSession {
         "spark.serializer",
         "org.apache.spark.serializer.KryoSerializer"
       )
+      .config("spark.databricks.delta.optimize.repartition.enabled", "true")
       .enableHiveSupport()
       .getOrCreate()
 
