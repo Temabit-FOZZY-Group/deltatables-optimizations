@@ -1,3 +1,5 @@
+package ua.fozzy.temabit.deltaoptimizations
+
 object SparkSession {
   val spark: org.apache.spark.sql.SparkSession =
     org.apache.spark.sql.SparkSession

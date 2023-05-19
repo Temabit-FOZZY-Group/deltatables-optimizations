@@ -1,8 +1,12 @@
+package ua.fozzy.temabit.deltaoptimizations
+
 import scopt.OParser
-import wvlet.log.LogSupport
+import ua.fozzy.temabit.commands.{Optimize, Vacuum}
+import wvlet.log.{LogLevel, LogSupport, Logger}
 
 object Main extends LogSupport {
   case class Config(
+      debug: Boolean = false,
       mode: String = "",
       exclude: Seq[String] = Seq(),
       include: Seq[String] = Seq("all"),
@@ -15,6 +19,9 @@ object Main extends LogSupport {
 
     OParser.parse(parser, args, Config()) match {
       case Some(config) =>
+        if (config.debug) {
+          Logger("ua.fozzy.temabit").setLogLevel(LogLevel.DEBUG)
+        }
         val objects = DatabaseService.collectObjects(config)
         config.mode match {
           case "vacuum"   => Vacuum.run(objects)

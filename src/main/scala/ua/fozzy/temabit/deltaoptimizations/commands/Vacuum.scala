@@ -1,4 +1,6 @@
-import SparkSession.spark
+package ua.fozzy.temabit.commands
+
+import ua.fozzy.temabit.deltaoptimizations.SparkSession.spark
 import wvlet.log.LogSupport
 object Vacuum extends LogSupport {
   def run(objects: List[String]): Unit = {

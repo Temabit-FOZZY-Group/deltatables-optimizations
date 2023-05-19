@@ -1,5 +1,7 @@
-import Main.Config
-import SparkSession.spark
+package ua.fozzy.temabit.deltaoptimizations
+
+import ua.fozzy.temabit.deltaoptimizations.Main.Config
+import ua.fozzy.temabit.deltaoptimizations.SparkSession.spark
 import wvlet.log.LogSupport
 
 import scala.collection.mutable.ListBuffer
@@ -13,6 +15,7 @@ object DatabaseService extends LogSupport {
     databases.appendAll(
       spark.sql(s"show databases like '*'").as[String].collect()
     )
+    logger.debug(s"Databases found: ${databases.mkString(", ")}")
     databases.par
       .foreach(db => {
         val tables = spark
@@ -24,13 +27,16 @@ object DatabaseService extends LogSupport {
             .as[String]
             .collect()
         )
-
       })
+    logger.debug(s"Objects found: ${objects.mkString(", ")}")
     if (!config.include.head.equals("all")) {
       val regexp = new Regex(
         config.include
           .map(x => "^" + x + (if (x.contains(".")) "$" else "\\..+"))
           .mkString("|")
+      )
+      logger.debug(
+        s"Using regexp '${regexp.toString()}' to filter objects that should be included"
       )
       objects = objects.filter(obj => regexp.pattern.matcher(obj).matches())
     }
@@ -41,9 +47,12 @@ object DatabaseService extends LogSupport {
           .map(x => "^" + x + (if (x.contains(".")) "$" else "\\..+"))
           .mkString("|")
       )
+      logger.debug(
+        s"Using regexp '${regexp.toString()}' to filter objects that should be excluded"
+      )
       objects = objects.filter(obj => !regexp.pattern.matcher(obj).matches())
     }
-    objects
+    val finalObjList = objects
       .filter(table => {
         var isDelta = false
         try {
@@ -66,6 +75,10 @@ object DatabaseService extends LogSupport {
         isDelta
       })
       .toList
+
+    logger.debug(s"Final list of objects: ${finalObjList.mkString(", ")}")
+
+    finalObjList
 
   }
 }

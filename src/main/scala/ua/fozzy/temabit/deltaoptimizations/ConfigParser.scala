@@ -1,5 +1,7 @@
-import Main.Config
+package ua.fozzy.temabit.deltaoptimizations
+
 import scopt.OParser
+import ua.fozzy.temabit.deltaoptimizations.Main.Config
 
 object ConfigParser {
   val builder = OParser.builder[Config]
@@ -11,6 +13,8 @@ object ConfigParser {
       help("help").text(
         "use this jar via spark to perform vacuum on a desired table or database"
       ),
+      opt[Unit]("debug")
+        .action((_, c) => c.copy(debug = true)),
       opt[Seq[String]]('i', "include")
         .valueName("[optional] <db1>,<db2>,<db3>.<table1>...")
         .action((x, c) => c.copy(include = x))
