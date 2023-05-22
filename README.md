@@ -5,7 +5,7 @@ Build a jar and pass it to Spark.
 
 ```
 Usage: deltatables-optimizations [vacuum|optimize] [options]
-
+  --debug
   --help                   use this jar via spark to perform vacuum on a desired table or database
   -i, --include [optional] <db1>,<db2>,<db3>.<table1>...
                            A list of objects to run VACUUM on.
